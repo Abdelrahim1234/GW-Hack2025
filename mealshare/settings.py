@@ -9,20 +9,20 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+import os
+from dotenv import load_dotenv
 from pathlib import Path
 from pymongo import MongoClient
 
 
 
-MONGO_URI = "mongodb+srv://ikzshayer:dNrk92kTDsviqmcZ@gwuhacks.npjxi.mongodb.net/?retryWrites=true&w=majority&appName=GWUHacks"
 client = MongoClient(MONGO_URI)
 
 db_name = "mealShare"  # Replace with your actual DB name
 db = client[db_name]
 
 
-WEATHER_API_KEY = "68e4019a286f232ef99baa1c644a651b"
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -72,7 +72,6 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 # OpenAI API Key
 import os
-OPENAI_API_KEY ="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"  # Store in environment variable
 ROOT_URLCONF = 'mealshare.urls'
 
 TEMPLATES = [
