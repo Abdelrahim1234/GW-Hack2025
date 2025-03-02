@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 import json
 from pymongo import MongoClient
 from mealshare.settings import db  # Assuming `db` is the MongoDB connection from settings
@@ -13,7 +14,7 @@ from mealshare.settings import db  # Assuming `db` is the MongoDB connection fro
 def calculate_food(request):
     if request.method == "POST":
         try:
-            
+
             data = json.loads(request.body)
             user_id = data.get("user_id")
             num_children = data.get("num_children")
@@ -86,6 +87,64 @@ def get_food_data(request):
                 return JsonResponse({"error": "No food data found for this user"}, status=404)
 
             return JsonResponse(user_food_data)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
+@csrf_exempt
+def recommend_recipes(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            user_id = data.get("user_id")
+            api_key = data.get("api_key")  # Get API key from the request
+
+            if not user_id:
+                return JsonResponse({"error": "Missing user ID"}, status=400)
+
+            if not api_key:
+                return JsonResponse({"error": "Missing API key"}, status=400)
+
+            # Use the API key dynamically
+            openai.api_key = api_key
+
+            # Retrieve user's location from MongoDB
+            users_collection = db["users"]  # Assuming user data is stored here
+            user_data = users_collection.find_one({"user_id": user_id}, {"_id": 0, "latitude": 1, "longitude": 1})
+
+            if not user_data or "latitude" not in user_data or "longitude" not in user_data:
+                return JsonResponse({"error": "User location not found"}, status=404)
+
+            latitude = user_data["latitude"]
+            longitude = user_data["longitude"]
+
+            # Define GPT prompt for regional recipes
+            prompt = f"""
+            Generate three highly nutritious and regionally appropriate recipes based on latitude {latitude} and longitude {longitude}. 
+            Each recipe should include:
+            1. Name
+            2. A short description
+            3. A link to the full recipe.
+
+            Format the response as a JSON list of objects with 'name', 'description', and 'link' keys.
+            """
+
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a nutrition expert."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+
+            # Parse GPT response
+            gpt_output = response["choices"][0]["message"]["content"]
+            recipes = json.loads(gpt_output)
+
+            return JsonResponse({"user_id": user_id, "recipes": recipes})
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
