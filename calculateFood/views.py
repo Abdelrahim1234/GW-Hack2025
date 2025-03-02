@@ -1,5 +1,6 @@
 import openai
 import os
+import requests
 from dotenv import load_dotenv
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -7,18 +8,19 @@ from django.conf import settings
 import json
 from pymongo import MongoClient
 from mealshare.settings import db  # Assuming `db` is the MongoDB connection from settings
-
+from mealshare.utils import get_weather_condition  # Import weather function
 # Load API key from environment variables
 
 @csrf_exempt
 def calculate_food(request):
     if request.method == "POST":
         try:
-
             data = json.loads(request.body)
             user_id = data.get("user_id")
             num_children = data.get("num_children")
-            api_key = data.get("api_key")  # Get API key from the request
+            api_key = data.get("api_key")
+            latitude = data.get("latitude")
+            longitude = data.get("longitude")
 
             if not user_id:
                 return JsonResponse({"error": "Missing user ID"}, status=400)
@@ -29,6 +31,12 @@ def calculate_food(request):
             if not api_key:
                 return JsonResponse({"error": "Missing API key"}, status=400)
 
+            if not latitude or not longitude:
+                return JsonResponse({"error": "Missing location data"}, status=400)
+
+            # Fetch weather condition
+            weather_condition = get_weather_condition(latitude, longitude)
+
             # Use the API key dynamically
             openai.api_key = api_key
 
@@ -37,6 +45,7 @@ def calculate_food(request):
             Given that {num_children} children need nutritionally balanced meals, calculate the total combined mass needed per food group.
             Each child should receive appropriate portions of grains, fruits, vegetables, protein, and dairy based on standard dietary guidelines.
             The food should be enough for a week.
+            Take into account the weather condition: {weather_condition}. If there is severe snow, increase portions for a buffer. If there is mild delay due to rain, adjust slightly.
             Provide output in JSON format with 'grains', 'fruits', 'vegetables', 'protein', and 'dairy' as keys and mass in pounds as values.
             """
 
@@ -56,7 +65,8 @@ def calculate_food(request):
             food_data = {
                 "user_id": user_id,
                 "num_children": num_children,
-                "food_requirements": food_requirements
+                "food_requirements": food_requirements,
+                "weather_condition": weather_condition
             }
             food_collection.insert_one(food_data)
 
@@ -64,6 +74,7 @@ def calculate_food(request):
                 "user_id": user_id,
                 "num_children": num_children,
                 "food_requirements": food_requirements,
+                "weather_condition": weather_condition,
                 "message": "Data saved to MongoDB"
             })
 
