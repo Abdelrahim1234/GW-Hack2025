@@ -15,7 +15,11 @@ from pathlib import Path
 from pymongo import MongoClient
 
 
+load_dotenv()  # Load environment variables
 
+MONGO_URI = os.getenv("MONGO_URI")
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = MongoClient(MONGO_URI)
 
 db_name = "mealShare"  # Replace with your actual DB name
